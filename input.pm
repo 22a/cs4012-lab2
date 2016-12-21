@@ -1,26 +1,26 @@
+Seq
 (
+  Seq
   (
+    Seq
     ( Assign "arg"     (Const (I 10)) )
-    `Seq`
     ( Assign "scratch" (Var "arg")    )
   )
-  `Seq`
   (
+    Seq
     ( Assign "total"   (Const (I 1))  )
-    `Seq`
     (
-      While ((Var "scratch") `Gt` (Const (I 1)))
+      While (Gt (Var "scratch") (Const (I 1)))
       (
+        Seq
         (
-          ( Assign "total"   ( (Var "total")   `Mul` (Var "scratch") ) )
-          `Seq`
-          ( Assign "scratch" ( (Var "scratch") `Sub` (Const (I 1))   ) )
+          Seq
+          ( Assign "total"   ( Mul (Var "total")    (Var "scratch") ) )
+          ( Assign "scratch" ( Sub (Var "scratch")  (Const (I 1))   ) )
         )
-        `Seq`
         ( Print ( Var "scratch" ) )
       )
     )
   )
 )
-`Seq`
 ( Print ( Var "scratch" ) )

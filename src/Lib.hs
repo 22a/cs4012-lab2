@@ -225,12 +225,18 @@ compile p = snd . runIdentity $ runWriterT p
 
 -- Executing a "program" means compiling it and then running the
 -- resulting Statement with an empty variable map.
-run :: Program -> IO ()
-run program = do result <- runExceptT $ (runStateT $ exec $ snd $ runIdentity $ (runWriterT program)) Map.empty
-                 case result of
-                   Right ( (), env ) -> return ()
-                   Left exn -> System.print ("Uncaught exception: "++exn)
+-- run :: Program -> IO ()
+-- run program = do result <- runExceptT $ (runStateT $ exec $ snd $ runIdentity $ (runWriterT program)) Map.empty
+--                  case result of
+--                    Right ( (), env ) -> return ()
+--                    Left exn -> System.print ("Uncaught exception: "++exn)
 
+run :: Statement -> IO ()
+run stat = do
+  result <- runExceptT $ (runStateT $ exec stat) Map.empty
+  case result of
+    Right ( (), env ) -> return ()
+    Left exn -> System.print ("Uncaught exception: "++exn)
 
 -- And finally some convenience functions for our syntactic sugar:
 infixl 1 .=
@@ -253,22 +259,22 @@ try :: Program -> Program -> Program
 try block recover = tell $ Try (compile block) (compile recover)
 
 -- After all that our embedded imperative language is ready to go. Here's the factorial function in all its glory:
-prog10 :: Program
-prog10 = do
-  "arg"     .= int 10
-  "scratch" .= var "arg"
-  "total"   .= int 1
-  while ( (var "scratch") `Gt` (int 1) ) (
-    do "total"   .=  "total" .* "scratch"
-       "scratch" .= "scratch" .- (1::Int)
-       print $ var "scratch"
-                                         )
-  print $ var "total"
+-- prog10 :: Program
+-- prog10 = do
+--   "arg"     .= int 10
+--   "scratch" .= var "arg"
+--   "total"   .= int 1
+--   while ( (var "scratch") `Gt` (int 1) ) (
+--     do "total"   .=  "total" .* "scratch"
+--        "scratch" .= "scratch" .- (1::Int)
+--        print $ var "scratch"
+--                                          )
+--   print $ var "total"
 
-
-someFunc = do
-  run prog10
 
 -- someFunc = do
---   str <- readFile "input.pm"
---   run $ read str
+--   run prog10
+
+someFunc = do
+  str <- readFile "input.pm"
+  run $ (read str :: Statement)
