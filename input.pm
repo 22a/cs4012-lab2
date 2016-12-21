@@ -23,4 +23,4 @@ Seq
     )
   )
 )
-( Print ( Var "scratch" ) )
+( Print ( Var "total" ) )
