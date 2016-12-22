@@ -11,6 +11,7 @@ module Lib
 import Prelude hiding (lookup)
 
 import qualified Data.Map as Map
+import qualified Data.List as List
 import Data.Maybe
 
 -- I want to get at the standard "print" function using the name System.print
@@ -30,7 +31,7 @@ import Control.Monad.Writer
 type Name = String          -- variable names
 data Val = I Int | B Bool   -- values TODO: keep stack of values
   deriving (Eq, Show, Read)
-type Env = [Map.Map Name Val] -- mapping from names to values
+type Env = [Map.Map Name [Val]] -- mapping from names to values
 
 data Expr = Const Val       -- expressions
            | Add Expr Expr
@@ -47,7 +48,7 @@ data Expr = Const Val       -- expressions
            deriving (Eq, Show, Read)
 
 lookup k t = case Map.lookup k t of
-                Just x -> return x
+                Just [x] -> return x
                 Nothing -> fail ("Unknown variable "++k)
 
 -- Monadic style expression evaluator,
@@ -110,7 +111,7 @@ type Run a = StateT Env (ExceptT String IO) a
 runRun p =  runExceptT ( runStateT p [Map.empty])
 
 set :: (Name, Val) -> Run ()
-set (s,i) = state $ (\(current:tail) -> ((), ((Map.insert s i current):current:tail)))
+set (s,i) = state $ (\(current:tail) -> ((), ((Map.insert s [i] current):current:tail)))
 
 exec :: Statement -> Run ()
 exec (Seq s0 s1) = do execRetain s0 >> execRetain s1
@@ -188,7 +189,6 @@ handleCommand s IC = do
   liftIO $ putStrLn (inspectCurrent st)
   awaitCommand s
 
-
 handleCommand s IH = do
   st <- get
   liftIO $ putStrLn (inspectHistory st)
@@ -198,5 +198,4 @@ inspectCurrent :: Env -> String
 inspectCurrent env = Map.showTree (head env)
 
 inspectHistory :: Env -> String
-inspectHistory [] = ""
-inspectHistory (h:t) = (inspectCurrent [h]) ++ (inspectHistory t)
+inspectHistory env = Map.showTree $ Map.unionsWith List.union env
