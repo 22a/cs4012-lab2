@@ -8,7 +8,7 @@ module Lib
 
 -- I want my own definition of lookup and I want to write my own function
 -- named "print".
-import Prelude hiding (lookup, print)
+import Prelude hiding (lookup)
 
 import qualified Data.Map as Map
 import Data.Maybe
@@ -27,7 +27,7 @@ import Control.Monad.Writer
 type Name = String          -- variable names
 data Val = I Int | B Bool   -- values TODO: keep stack of values
   deriving (Eq, Show, Read)
-type Env = Map.Map Name Val -- mapping from names to values
+type Env = [Map.Map Name Val] -- mapping from names to values
 
 data Expr = Const Val       -- expressions
            | Add Expr Expr
@@ -92,7 +92,7 @@ eval (Gt e0 e1)  = do evalib (>) e0 e1
 eval (Lt e0 e1)  = do evalib (<) e0 e1
 eval (Var s)     = do
   env <- ask
-  lookup s env
+  lookup s (head env)
 
 -- The statement language
 data Statement = Assign String Expr
@@ -101,19 +101,16 @@ data Statement = Assign String Expr
                | Print Expr
                | Seq Statement Statement
                | Try Statement Statement
-               | Pass
                deriving (Eq, Show, Read)
 
--- The 'Pass' statement is useful when making Statement an instance of
--- Monoid later on, we never actually expect to see it in a real program.
 type Run a = StateT Env (ExceptT String IO) a
-runRun p =  runExceptT ( runStateT p Map.empty)
+runRun p =  runExceptT ( runStateT p [Map.empty])
 
 set :: (Name, Val) -> Run ()
-set (s,i) = state $ (\table -> ((), Map.insert s i table))
+set (s,i) = state $ (\(current:tail) -> ((), ((Map.insert s i current):tail)))
 
 exec :: Statement -> Run ()
-exec (Seq s0 s1) = do exec s0 >> exec s1
+exec (Seq s0 s1) = do execRetain s0 >> execRetain s1
 
 exec (Assign s v) = do
   st <- get
@@ -125,10 +122,6 @@ exec (Print e) = do
   Right val <- return $ runEval st (eval e)
   liftIO $ System.print val
   return ()
-
--- The transformer libraries define an overloaded "liftIO" operation that passes the required operation along the stack of monads to the next "liftIO" in line until the actual IO monad is reached. In this case it's equivalent to :
---  lift . lift . System.IO.print
--- because we have to pass through StateT and ExceptT to reach the IO monad.
 
 exec (If cond s0 s1) = do
   st <- get
@@ -142,28 +135,46 @@ exec (While cond s) = do
 
 exec (Try s0 s1) = do catchError (exec s0) (\e -> exec s1)
 
--- We never actually expect to encounter one of these, the programs should run fine if we left this equation out:
-
-exec Pass = return ()
-
--- The writer monad has an operation, "tell" which appends a piece of
--- output to an accumulated value. For this to work the type we are
--- accumulating (Statement, in this case) must be have both an appending
--- (plus-like) operation and a base (zero-like) operation. In algebra
--- something with that structure is called a Monoid:
-
-instance Monoid Statement where
-  mempty = Pass
-  mappend a b = a `Seq` b
-
-
-runAll :: Statement -> IO ()
-runAll stat = do
-  result <- runExceptT $ (runStateT $ exec stat) Map.empty
+run :: Statement -> IO ()
+run stat = do
+  result <- runExceptT $ (runStateT $ exec stat) [Map.empty]
   case result of
     Right ( (), env ) -> return ()
     Left exn -> System.print ("Uncaught exception: "++exn)
 
 someFunc = do
   str <- readFile "input.pm"
-  runAll $ (read str :: Statement)
+  run $ (read str :: Statement)
+
+execRetain :: Statement -> Run ()
+execRetain s = do
+  liftIO $ print s
+  awaitCommand s
+
+data Command = Step
+             | StepBack
+             | InspectAll
+             | Inspect Name
+             deriving (Show, Read, Eq)
+
+awaitCommand :: Statement -> Run ()
+awaitCommand stat = do
+  line <- liftIO $ getLine
+  handleCommand stat (read line :: Command)
+
+handleCommand :: Statement -> Command -> Run ()
+handleCommand s Step = do
+  exec s
+
+handleCommand s StepBack = do
+  exec s
+
+-- handleCommand s InspectAll = do
+--   env <- ask
+--   liftIO $ print (inspectAll env)
+--   awaitCommand s
+
+-- handleCommand s (Inspect name) = do
+--   env <- ask
+--   liftIO $ print (inspectVar env name)
+--   awaitCommand s
