@@ -110,7 +110,7 @@ type Run a = StateT Env (ExceptT String IO) a
 runRun p =  runExceptT ( runStateT p [Map.empty])
 
 set :: (Name, Val) -> Run ()
-set (s,i) = state $ (\(current:tail) -> ((), ((Map.insert s i current):tail)))
+set (s,i) = state $ (\(current:tail) -> ((), ((Map.insert s i current):current:tail)))
 
 exec :: Statement -> Run ()
 exec (Seq s0 s1) = do execRetain s0 >> execRetain s1
@@ -149,21 +149,25 @@ someFunc = do
   str <- readFile "input.pm"
   run $ (read str :: Statement)
 
-execRetain :: Statement -> Run ()
-execRetain (Seq s1 s2) = do
-  awaitCommand (Seq s1 s2)
-
-execRetain s = do
-  liftIO $ print s
-  awaitCommand s
-
-data Command = Step
-             | StepBack
-             | Inspect
-             deriving (Read, Eq)
+printNextStat :: Statement -> IO ()
+printNextStat s = setSGR [SetColor Foreground Vivid Green] *> putStr "Next Stat: " *> putStr (show s) *> setSGR [] *> putStrLn ""
 
 prompt :: IO String
 prompt = setSGR [SetColor Foreground Vivid White, SetColor Background Vivid Magenta] *> putStr "λ>" *> setSGR [] *> putStr " " *> getLine
+
+execRetain :: Statement -> Run ()
+execRetain (Seq s1 s2) = do
+  awaitCommand (Seq s1 s2)
+execRetain s = do
+  liftIO $ printNextStat s
+  awaitCommand s
+
+data Command = S
+             | SB
+             | IC
+             | IH
+             deriving (Read, Eq)
+
 
 awaitCommand :: Statement -> Run ()
 awaitCommand (Seq s1 s2) = do
@@ -173,16 +177,26 @@ awaitCommand stat = do
   handleCommand stat (read line :: Command)
 
 handleCommand :: Statement -> Command -> Run ()
-handleCommand s Step = do
+handleCommand s S = do
   exec s
 
-handleCommand s StepBack = do
+handleCommand s SB = do
   exec s
 
-handleCommand s Inspect = do
+handleCommand s IC = do
   st <- get
-  liftIO $ print (inspectAll st)
+  liftIO $ putStrLn (inspectCurrent st)
   awaitCommand s
 
-inspectAll :: Env -> String
-inspectAll env = Map.showTree (head env)
+
+handleCommand s IH = do
+  st <- get
+  liftIO $ putStrLn (inspectHistory st)
+  awaitCommand s
+
+inspectCurrent :: Env -> String
+inspectCurrent env = Map.showTree (head env)
+
+inspectHistory :: Env -> String
+inspectHistory [] = ""
+inspectHistory (h:t) = (inspectCurrent [h]) ++ (inspectHistory t)
