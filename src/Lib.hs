@@ -16,6 +16,9 @@ import Data.Maybe
 -- I want to get at the standard "print" function using the name System.print
 import qualified System.IO as System
 
+-- colour prompt
+import System.Console.ANSI
+
 -- I plan to use these monads to construct the parts of my interpreter
 import Control.Monad.Identity
 import Control.Monad.Except
@@ -147,19 +150,26 @@ someFunc = do
   run $ (read str :: Statement)
 
 execRetain :: Statement -> Run ()
+execRetain (Seq s1 s2) = do
+  awaitCommand (Seq s1 s2)
+
 execRetain s = do
   liftIO $ print s
   awaitCommand s
 
 data Command = Step
              | StepBack
-             | InspectAll
-             | Inspect Name
-             deriving (Show, Read, Eq)
+             | Inspect
+             deriving (Read, Eq)
+
+prompt :: IO String
+prompt = setSGR [SetColor Foreground Vivid White, SetColor Background Vivid Magenta] *> putStr "λ>" *> setSGR [] *> putStr " " *> getLine
 
 awaitCommand :: Statement -> Run ()
+awaitCommand (Seq s1 s2) = do
+  exec (Seq s1 s2)
 awaitCommand stat = do
-  line <- liftIO $ getLine
+  line <- liftIO $ prompt
   handleCommand stat (read line :: Command)
 
 handleCommand :: Statement -> Command -> Run ()
@@ -169,12 +179,10 @@ handleCommand s Step = do
 handleCommand s StepBack = do
   exec s
 
--- handleCommand s InspectAll = do
---   env <- ask
---   liftIO $ print (inspectAll env)
---   awaitCommand s
+handleCommand s Inspect = do
+  st <- get
+  liftIO $ print (inspectAll st)
+  awaitCommand s
 
--- handleCommand s (Inspect name) = do
---   env <- ask
---   liftIO $ print (inspectVar env name)
---   awaitCommand s
+inspectAll :: Env -> String
+inspectAll env = Map.showTree (head env)
