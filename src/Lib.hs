@@ -1,7 +1,7 @@
 {-# Language MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances #-}
 
 module Lib
-    ( someFunc
+    ( runInterpreter
     ) where
 
 -- many things learned from http://catamorph.de/documents/Transformers.pdf
@@ -146,15 +146,13 @@ run stat = do
     Right ( (), env ) -> return ()
     Left exn -> System.print ("Uncaught exception: "++exn)
 
-someFunc = do
-  str <- readFile "input.pm"
-  run $ (read str :: Statement)
 
 printNextStat :: Statement -> IO ()
 printNextStat s = setSGR [SetColor Foreground Vivid Green] *> putStr "Next Stat: " *> putStr (show s) *> setSGR [] *> putStrLn ""
 
 prompt :: IO String
 prompt = setSGR [SetColor Foreground Vivid White, SetColor Background Vivid Magenta] *> putStr "λ>" *> setSGR [] *> putStr " " *> getLine
+
 
 execRetain :: Statement -> Run ()
 execRetain (Seq s1 s2) = do
@@ -163,10 +161,10 @@ execRetain s = do
   liftIO $ printNextStat s
   awaitCommand s
 
-data Command = S
-             | SB
-             | IC
-             | IH
+data Command = S    --step
+             | SB   --step backwards
+             | IC   --inspect current state of variables
+             | IH   --inspect history of state of variables
              deriving (Read, Eq)
 
 
@@ -199,3 +197,7 @@ inspectCurrent env = Map.showTree (head env)
 
 inspectHistory :: Env -> String
 inspectHistory env = Map.showTree $ Map.unionsWith List.union env
+
+runInterpreter filename = do
+  str <- readFile filename
+  run $ (read str :: Statement)
