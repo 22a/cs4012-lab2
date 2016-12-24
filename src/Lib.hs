@@ -6,12 +6,13 @@ module Lib
 
 -- many things learned from http://catamorph.de/documents/Transformers.pdf
 
--- I want my own definition of lookup and I want to write my own function
--- named "print".
+-- I want my own definition of lookup
 import Prelude hiding (lookup)
 
+-- some helper functions live in here
 import qualified Data.Map as Map
 import qualified Data.List as List
+
 import Data.Maybe
 
 -- I want to get at the standard "print" function using the name System.print
@@ -29,9 +30,10 @@ import Control.Monad.Writer
 
 -- The pure expression language
 type Name = String          -- variable names
-data Val = I Int | B Bool   -- values TODO: keep stack of values
+data Val = I Int | B Bool   -- values
   deriving (Eq, Show, Read)
-type Env = [Map.Map Name [Val]] -- mapping from names to values
+-- mapping from var names to values, vals in a list to make unioning easier later
+type Env = [Map.Map Name [Val]]
 
 data Expr = Const Val       -- expressions
            | Add Expr Expr
@@ -47,6 +49,7 @@ data Expr = Const Val       -- expressions
            | Var String
            deriving (Eq, Show, Read)
 
+-- current value lookup, only return vars from top of state stack
 lookup k t = case Map.lookup k t of
                 Just [x] -> return x
                 Nothing -> fail ("Unknown variable "++k)
@@ -110,6 +113,8 @@ data Statement = Assign String Expr
 type Run a = StateT Env (ExceptT String IO) a
 runRun p =  runExceptT ( runStateT p [Map.empty])
 
+-- every time we change state we want to push the new state onto the top
+-- of the stack
 set :: (Name, Val) -> Run ()
 set (s,i) = state $ (\(current:tail) -> ((), ((Map.insert s [i] current):current:tail)))
 
@@ -139,6 +144,7 @@ exec (While cond s) = do
 
 exec (Try s0 s1) = do catchError (exec s0) (\e -> exec s1)
 
+-- start executing statements with empty map as state
 run :: Statement -> IO ()
 run stat = do
   result <- runExceptT $ (runStateT $ exec stat) [Map.empty]
@@ -146,14 +152,16 @@ run stat = do
     Right ( (), env ) -> return ()
     Left exn -> System.print ("Uncaught exception: "++exn)
 
-
+-- print statement in green
 printNextStat :: Statement -> IO ()
 printNextStat s = setSGR [SetColor Foreground Vivid Green] *> putStr "Next Stat: " *> putStr (show s) *> setSGR [] *> putStrLn ""
 
+-- "pretty" coloured prompt to go before user commands
 prompt :: IO String
 prompt = setSGR [SetColor Foreground Vivid White, SetColor Background Vivid Magenta] *> putStr "λ>" *> setSGR [] *> putStr " " *> getLine
 
 
+-- print next statements in a sequencing statement and wait
 execRetain :: Statement -> Run ()
 execRetain (Seq s1 s2) = do
   awaitCommand (Seq s1 s2)
@@ -168,6 +176,9 @@ data Command = S    --step
              deriving (Read, Eq)
 
 
+-- pause execution, wait for user input
+-- if this is just a plain sequencing statement
+-- just expand it without asking the user
 awaitCommand :: Statement -> Run ()
 awaitCommand (Seq s1 s2) = do
   exec (Seq s1 s2)
@@ -175,6 +186,7 @@ awaitCommand stat = do
   line <- liftIO $ prompt
   handleCommand stat (read line :: Command)
 
+-- take the user command and do it
 handleCommand :: Statement -> Command -> Run ()
 handleCommand s S = do
   exec s
@@ -193,12 +205,19 @@ handleCommand s IH = do
   liftIO $ putStrLn (inspectHistory st)
   awaitCommand s
 
+-- given our "stack" of states,
+-- "peek" at the top to see current state
 inspectCurrent :: Env -> String
 inspectCurrent env = Map.showTree (head env)
 
+-- union all past values for all the variables in the program,
+-- then remove adjacent duplicates, we don't want to be shown that
+-- a given vairable stayed the same from statement to statement we
+-- only care when it changes
 inspectHistory :: Env -> String
 inspectHistory env = Map.showTree $ Map.map remAdjDups $ Map.unionsWith (++) env
 
+-- remove adjacent duplicates in list
 remAdjDups :: (Eq a) => [a] -> [a]
 remAdjDups [] = []
 remAdjDups [x] = [x]
@@ -206,6 +225,9 @@ remAdjDups (x:y:xs) = if x == y
                       then remAdjDups(x:xs)
                       else x:remAdjDups(y:xs)
 
+-- load the file from disk, parse out one big statement.
+-- give completely no useful information to the user when the
+-- read fails, don't tell them what they did wrong ¯\_(ツ)_/¯
 runInterpreter filename = do
   str <- readFile filename
   run $ (read str :: Statement)
