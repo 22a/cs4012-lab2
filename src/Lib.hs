@@ -180,7 +180,8 @@ handleCommand s S = do
   exec s
 
 handleCommand s SB = do
-  exec s
+  liftIO $ putStrLn "This isn't implemented yet :'(" *> printNextStat s
+  awaitCommand s
 
 handleCommand s IC = do
   st <- get
@@ -196,7 +197,14 @@ inspectCurrent :: Env -> String
 inspectCurrent env = Map.showTree (head env)
 
 inspectHistory :: Env -> String
-inspectHistory env = Map.showTree $ Map.unionsWith List.union env
+inspectHistory env = Map.showTree $ Map.map remAdjDups $ Map.unionsWith (++) env
+
+remAdjDups :: (Eq a) => [a] -> [a]
+remAdjDups [] = []
+remAdjDups [x] = [x]
+remAdjDups (x:y:xs) = if x == y
+                      then remAdjDups(x:xs)
+                      else x:remAdjDups(y:xs)
 
 runInterpreter filename = do
   str <- readFile filename
