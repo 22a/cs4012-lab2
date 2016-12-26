@@ -15,6 +15,12 @@ import qualified Data.List as List
 
 import Data.Maybe
 
+-- for exiting interpreter
+import System.Exit
+
+-- for readMaybe
+import qualified Text.Read as Read
+
 -- I want to get at the standard "print" function using the name System.print
 import qualified System.IO as System
 
@@ -173,7 +179,14 @@ data Command = S    --step
              | SB   --step backwards
              | IC   --inspect current state of variables
              | IH   --inspect history of state of variables
+             | Q    --quit
+             | U    --unknown command (v likely given you can't backspace)
              deriving (Read, Eq)
+
+parseCommand :: String -> Command
+parseCommand s = case (Read.readMaybe s :: Maybe Command) of
+                   Just c -> c
+                   Nothing -> U   --parse failed, unknown command
 
 
 -- pause execution, wait for user input
@@ -184,7 +197,7 @@ awaitCommand (Seq s1 s2) = do
   exec (Seq s1 s2)
 awaitCommand stat = do
   line <- liftIO $ prompt
-  handleCommand stat (read line :: Command)
+  handleCommand stat (parseCommand line)
 
 -- take the user command and do it
 handleCommand :: Statement -> Command -> Run ()
@@ -205,6 +218,13 @@ handleCommand s IH = do
   liftIO $ putStrLn (inspectHistory st)
   awaitCommand s
 
+handleCommand s Q = do
+  liftIO $ exitSuccess
+
+handleCommand s U = do
+  liftIO $ putStrLn "Unknown Command" *> printNextStat s
+  awaitCommand s
+
 -- given our "stack" of states,
 -- "peek" at the top to see current state
 inspectCurrent :: Env -> String
@@ -212,8 +232,8 @@ inspectCurrent env = Map.showTree (head env)
 
 -- union all past values for all the variables in the program,
 -- then remove adjacent duplicates, we don't want to be shown that
--- a given vairable stayed the same from statement to statement we
--- only care when it changes
+-- a given vairable stayed the same from statement to statement
+-- we only care when it changes
 inspectHistory :: Env -> String
 inspectHistory env = Map.showTree $ Map.map remAdjDups $ Map.unionsWith (++) env
 
