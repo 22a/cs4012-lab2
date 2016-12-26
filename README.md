@@ -4,10 +4,12 @@
 
 ##### This document is written with github flavoured markdown in mind. It is best viewed [on github, if convenient, please read it there](https://github.com/22a/cs4012-lab2).
 
+
 ## Excuses
 I haven't completed this lab fully and I do not intend to before the submission date so I'm submitting it in its current state for fear of this niggling its way into my brain and forcing me to neglect exam study.
 
 If it is any consolation, I know how I would complete it, commentary on this is in the relevant section below.
+
 
 ## Milestones
 
@@ -56,7 +58,7 @@ And if we were to store all the Seq statements in the program's state we'd then 
 
 ##### 6. Static Analysis :-1: 0%
 
-Having spent too long thinking about the above, I haven't tackeled this yet. I may still get a chance to.
+Having spent too long thinking about the above, I haven't tackled this yet. I may still get a chance to.
 
 
 ## Setup
@@ -86,6 +88,16 @@ Run the interpreter:
 stack exec cs4012-lab2-exe
 ```
 
+## Caveats
+I tested this program inside `stack ghci`, reloading the file when there were changes, instead of building and running `stack exec` every time. For some weird reason the prompt gets pushed up to the line above in the exec execution environment. My point being, the prompt isn't really a prompt if you run in stack exec, if you'd like the unadulterated interpreting experience, after building, run:
+
+```bash
+stack ghci
+```
+then:
+```
+main
+```
 
 ## Usage
  The interpreter has 5 possible commands, 4 useful, and 1 tragically unimplemented:
@@ -96,3 +108,5 @@ stack exec cs4012-lab2-exe
  * **Q** : *Quit* : Exit the interpreter
 
 When you start the interpreter you'll be greeted with the first non Seq statement, you can read it, and then decide what you want to do with it.
+
+The prompt is very annoying in that, if you make a mistake typing the command, you can't backspace. I have made this slightly more bearable by making the program interpret the garble as an unknown command and ask for another.
