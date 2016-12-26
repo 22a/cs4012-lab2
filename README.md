@@ -42,7 +42,7 @@ Having completed the previous step using snapshots this means I can easily resto
 
 For a while I also considered storying each statement(string of show) in the program's state stack alongside the variable values, so that I could easily just "pop" the most recent executed statement from the stack and place it into the path of function calls, but when trying to implement this I ran into an issue with how I transparently hide the expansion of Seq statements from the user. This left me with missing statements, there's a crude illustration below:
 
-Say for example our program had 2 real statements `this` and `that`, our source would look like:
+Say for example our program had 2 real statements `egg` and `chicken`, our source would look like:
 ```haskell
 Seq (egg) (chicken)
 ```
@@ -78,7 +78,7 @@ stack build
 
 Edit the source file to be interpreted if you want:
 ```bash
-nvim input.pm
+nvim input.peter
 ```
 
 Run the interpreter:
