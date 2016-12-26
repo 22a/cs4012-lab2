@@ -245,9 +245,49 @@ remAdjDups (x:y:xs) = if x == y
                       then remAdjDups(x:xs)
                       else x:remAdjDups(y:xs)
 
+-- recursively check for variable use in expressions
+allUsedByExpr :: Expr -> [Name]
+allUsedByExpr (Var n) = [n]
+allUsedByExpr (Not e) = allUsedByExpr e
+allUsedByExpr (Mul e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (Div e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (Add e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (Sub e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (And e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (Or e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (Eq e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (Gt e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (Lt e0 e1) = allUsedByExpr e0 ++ allUsedByExpr e1
+allUsedByExpr (Const _) = []
+
+-- recurse down through the statements building a list of all used variables
+allUsedVars :: Statement -> [Name]
+allUsedVars (Assign _ e) = allUsedByExpr e
+allUsedVars (Print e) = allUsedByExpr e
+allUsedVars (If cond s0 s1) = allUsedByExpr cond ++ allUsedVars s0 ++ allUsedVars s1
+allUsedVars (While cond s) = allUsedByExpr cond ++ allUsedVars s
+allUsedVars (Seq s0 s1) = allUsedVars s0 ++ allUsedVars s1
+allUsedVars (Try s0 s1) = allUsedVars s0 ++ allUsedVars s1
+
+-- recurse down through the statements finding all assigned variables
+allAssignedVars :: Statement -> [Name]
+allAssignedVars (Assign n _) = [n]
+allAssignedVars (While _ s) = allAssignedVars s
+allAssignedVars (Seq s0 s1) = allAssignedVars s0 ++ allAssignedVars s1
+allAssignedVars (If _ s0 s1) = allAssignedVars s0 ++ allAssignedVars s1
+allAssignedVars (Try s0 s1) = allAssignedVars s0 ++ allAssignedVars s1
+allAssignedVars (Print _) = []
+
+-- static analysis runs before interpretation starts
+unusedVars :: Statement -> [Name]
+unusedVars s = (List.nub $ allAssignedVars s) List.\\ (List.nub $ allUsedVars s)
+
 -- load the file from disk, parse out one big statement.
 -- give completely no useful information to the user when the
 -- read fails, don't tell them what they did wrong ¯\_(ツ)_/¯
+-- print a list of all unused variables before the program starts
 runInterpreter filename = do
   str <- readFile filename
+  putStrLn "Unused variables:"
+  putStrLn $ List.intercalate "\n" (unusedVars (read str :: Statement))
   run $ (read str :: Statement)

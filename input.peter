@@ -3,7 +3,11 @@ Seq
   Seq
   (
     Seq
-    ( Assign "arg"     (Const (I 10)) )
+    (
+     Seq
+     ( Assign "arg"     (Const (I 10)) )
+     ( Assign "peter-meehan" (Const (I 13318021))    )
+    )
     ( Assign "scratch" (Var "arg")    )
   )
   (
