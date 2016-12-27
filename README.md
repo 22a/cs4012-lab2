@@ -18,7 +18,7 @@ If it is any consolation, I know how I would complete it, commentary on this is 
 - [x] Inspect
 - [x] Inspect History
 - [ ] Step Backwards
-- [ ] Static Analysis
+- [x] Static Analysis
 
 
 ## Architecture
@@ -56,9 +56,8 @@ And if we were to store all the Seq statements in the program's state we'd then 
 **TL;DR:** I tried a few things, they didn't work.
 
 
-##### 6. Static Analysis :-1: 0%
-
-Having spent too long thinking about the above, I haven't tackled this yet. I may still get a chance to.
+##### 6. Static Analysis :+1: 100%
+The program runs simple static analysis to detect variables that have been assigned but never used in the input program before interpretation starts.
 
 
 ## Setup
