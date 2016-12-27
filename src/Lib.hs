@@ -225,17 +225,24 @@ handleCommand s U = do
   liftIO $ putStrLn "Unknown Command" *> printNextStat s
   awaitCommand s
 
+-- unfortunately this `foldrWithKey` calls toAscList, which throws away any
+-- information the env had regarding the assignment order of varaibles
+-- if this is necessary we could go back to the plain old `Map.showTree`
+showMap :: Env -> String
+showMap e = Map.foldrWithKey f "" (head e)
+  where f key val result = result ++ (show key) ++ " : " ++ (show val) ++ "\n"
+
 -- given our "stack" of states,
 -- "peek" at the top to see current state
 inspectCurrent :: Env -> String
-inspectCurrent env = Map.showTree (head env)
+inspectCurrent env = showMap env
 
 -- union all past values for all the variables in the program,
 -- then remove adjacent duplicates, we don't want to be shown that
 -- a given vairable stayed the same from statement to statement
 -- we only care when it changes
 inspectHistory :: Env -> String
-inspectHistory env = Map.showTree $ Map.map remAdjDups $ Map.unionsWith (++) env
+inspectHistory env = showMap [(Map.map remAdjDups $ Map.unionsWith (++) env)]
 
 -- remove adjacent duplicates in list
 remAdjDups :: (Eq a) => [a] -> [a]
