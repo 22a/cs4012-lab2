@@ -40,7 +40,7 @@ The variable version history is implemented by changing the environment/state fr
 ##### 4. Inspect History :+1: 100%
 
 ##### 5. Step Backwards :-1: 0/attempt_marks%?
-Having completed the previous step using snapshots this means I can easily restore the state of the variables of the program. The main issue I ran into was with the Statement structure, the recursive structure of the seq statement expansion made it tricky to think about restoring previous statements. I've seen classmates do cool things with lists of stats instead of recursive definitions which I know works but I've elected to not devote any more time to it.
+Having completed the previous step using snapshots this means I can easily restore the state of the variables of the program. The main issue I ran into was with the statement structure, the recursive structure of the seq statement expansion made it tricky to think about restoring previous statements. I've seen classmates do cool things with lists of stats instead of recursive definitions which, from what I hear, works like a charm but implementing it would mean a complete redesign of how the interpreter works. I've come to terms with the fact that I can't afford to spend any longer on this step and must submit as is.
 
 For a while I also considered storying each statement(string of show) in the program's state stack alongside the variable values, so that I could easily just "pop" the most recent executed statement from the stack and place it into the path of function calls, but when trying to implement this I ran into an issue with how I transparently hide the expansion of Seq statements from the user. This left me with missing statements, there's a crude illustration below:
 
